@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestión Calidad 5S - FOSSO</title>
+    <meta name="theme-color" content="#1F4E79">
+    <!-- Librerías offline para Base de Datos y Generación de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0; padding: 0; background-color: #F4F6F9; color: #333;
+        }
+        header {
+            background-color: #1F4E79; color: white; padding: 12px 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        header h1 { font-size: 16px; margin: 0; }
+        header span { font-size: 11px; opacity: 0.85; }
+        
+        .container { padding: 12px; max-width: 600px; margin: auto; }
+        .card {
+            background: white; border-radius: 10px; padding: 14px; margin-bottom: 15px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08); border: 1px solid #E2E8F0;
+        }
+        .card h2 { font-size: 14px; margin-top: 0; margin-bottom: 10px; color: #1F4E79; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
+
+        label { font-size: 12px; font-weight: 600; display: block; margin-top: 8px; color: #4A5568; }
+        input, select, textarea {
+            width: 100%; padding: 10px; font-size: 14px; border: 1px solid #CBD5E0;
+            border-radius: 6px; margin-top: 4px; outline: none; background: #FAFAFA;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #1F4E79; background: #fff; }
+
+        .row { display: flex; gap: 10px; }
+        .col { flex: 1; }
+
+        .btn-camera {
+            background: #4A5568; color: white; border: none; border-radius: 6px;
+            padding: 10px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 6px;
+            display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer;
+        }
+        .btn-camera.levantada { background: #27AE60; }
+        .preview-img {
+            width: 100%; height: 140px; object-fit: cover; border-radius: 6px;
+            margin-top: 6px; display: none; border: 1px solid #CBD5E0;
+        }
+
+        .btn-action {
+            width: 100%; padding: 12px; border: none; border-radius: 6px;
+            font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+        .btn-save { background: #1F4E79; color: white; }
+        .btn-pdf { background: #C0392B; color: white; margin-bottom: 12px; }
+
+        /* Lista de Observaciones */
+        .obs-item {
+            border-left: 4px solid #C0392B; background: white; padding: 10px;
+            border-radius: 4px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .obs-item.levantada { border-left-color: #27AE60; }
+        .obs-header { display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; }
+        .badge.pendiente { background: #C0392B; }
+        .badge.levantada { background: #27AE60; }
+
+        .footer {
+            text-align: center; font-size: 12px; font-weight: 600; color: #718096;
+            padding: 20px 0 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>FOSSO - Calidad 5S</h1>
+            <span>Plan de Acción y Levantamiento</span>
+        </div>
+        <button id="btnGenerarPdf" class="btn-action btn-pdf" style="width: auto; margin: 0; padding: 6px 12px; font-size: 12px;">📄 PDF</button>
+    </header>
+
+    <div class="container">
+
+        <!-- Formulario de Registro Rápido -->
+        <div class="card">
+            <h2>Registro de Observación en Campo</h2>
+            
+            <div class="row">
+                <div class="col" style="flex: 0.5;">
+                    <label>Ítem</label>
+                    <input type="number" id="txtItem" value="1">
+                </div>
+                <div class="col">
+                    <label>Responsable</label>
+                    <select id="selResp">
+                        <option value="FOSSO">FOSSO</option>
+                        <option value="AGROLMOS">AGROLMOS</option>
+                        <option value="PUNTO ROJO">PUNTO ROJO</option>
+                        <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label>Estado</label>
+                    <select id="selEstado">
+                        <option value="PENDIENTE">PENDIENTE</option>
+                        <option value="LEVANTADA">LEVANTADA</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Sección Hallazgo -->
+            <label style="color: #C0392B;">1. Hallazgo / Observación</label>
+            <textarea id="txtHallazgo" rows="2" placeholder="Describa la observación en comedor, cocina, etc..."></textarea>
+            
+            <input type="file" id="fileHallazgo" accept="image/*" capture="environment" style="display: none;">
+            <button class="btn-camera" onclick="document.getElementById('fileHallazgo').click()">📷 Tomar Foto del Hallazgo (Antes)</button>
+            <img id="prevHallazgo" class="preview-img">
+
+            <!-- Sección Levantamiento -->
+            <label style="color: #27AE60; margin-top: 14px;">2. Acción Correctiva / Levantamiento</label>
+            <textarea id="txtAccion" rows="2" placeholder="Acción realizada para subsanar..."></textarea>
+
+            <input type="file" id="fileLevantada" accept="image/*" capture="environment" style="display: none;">
+            <button class="btn-camera levantada" onclick="document.getElementById('fileLevantada').click()">📷 Tomar Foto Levantada (Después)</button>
+            <img id="prevLevantada" class="preview-img">
+
+            <div class="row">
+                <div class="col">
+                    <label>Fecha Hallazgo</label>
+                    <input type="date" id="txtFecH">
+                </div>
+                <div class="col">
+                    <label>Fecha Levantamiento</label>
+                    <input type="date" id="txtFecL">
+                </div>
+            </div>
+
+            <button class="btn-action btn-save" id="btnGuardar">💾 Guardar Observación</button>
+        </div>
+
+        <!-- Listado de Inspecciones -->
+        <div class="card">
+            <h2>Historial de Hallazgos</h2>
+            <div id="listaObservaciones"></div>
+        </div>
+
+        <!-- Firma de Desarrollador Requerida -->
+        <div class="footer">
+            Desarrollado por: Antonio Guanilo Gonzales
+        </div>
+
+    </div>
+
+    <script>
+        // Inicializar Base de Datos en el Celular (IndexedDB)
+        const db = new Dexie("Calidad5S_DB");
+        db.version(1).stores({
+            observaciones: "++id, item, descripcion, responsable, estado, fechaH, fechaL"
+        });
+
+        let fotoHallazgoBase64 = "";
+        let fotoLevantadaBase64 = "";
+        let editId = null;
+
+        // Establecer fecha de hoy por defecto
+        document.getElementById('txtFecH').value = new Date().toISOString().split('T')[0];
+
+        // Manejo de Fotos desde la cámara móvil
+        function comprimirYConvertir(input, previewId, callback) {
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = event => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const maxW = 800; // Optimizado para velocidad en celulares
+                        const scale = maxW / img.width;
+                        canvas.width = (img.width > maxW) ? maxW : img.width;
+                        canvas.height = (img.width > maxW) ? (img.height * scale) : img.height;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const b64 = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById(previewId).src = b64;
+                        document.getElementById(previewId).style.display = "block";
+                        callback(b64);
+                    };
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+
+        comprimirYConvertir(document.getElementById('fileHallazgo'), 'prevHallazgo', b64 => fotoHallazgoBase64 = b64);
+        comprimirYConvertir(document.getElementById('fileLevantada'), 'prevLevantada', b64 => fotoLevantadaBase64 = b64);
+
+        // Guardar o Actualizar
+        document.getElementById('btnGuardar').onclick = async () => {
+            const hallazgo = document.getElementById('txtHallazgo').value.trim();
+            if (!hallazgo) {
+                alert("Ingrese la descripción del hallazgo.");
+                return;
+            }
+
+            const data = {
+                item: parseInt(document.getElementById('txtItem').value) || 1,
+                responsable: document.getElementById('selResp').value,
+                estado: document.getElementById('selEstado').value,
+                descripcion: hallazgo,
+                accion: document.getElementById('txtAccion').value.trim(),
+                fechaH: document.getElementById('txtFecH').value,
+                fechaL: document.getElementById('txtFecL').value,
+                fotoH: fotoHallazgoBase64,
+                fotoL: fotoLevantadaBase64
+            };
+
+            if (editId) {
+                await db.observaciones.update(editId, data);
+                editId = null;
+            } else {
+                await db.observaciones.add(data);
+            }
+
+            limpiarFormulario();
+            cargarLista();
+        };
+
+        async function cargarLista() {
+            const items = await db.observaciones.orderBy('item').toArray();
+            const cont = document.getElementById('listaObservaciones');
+            cont.innerHTML = "";
+
+            // Sugerir siguiente item
+            if (!editId) {
+                const nextItem = items.length ? Math.max(...items.map(o => o.item)) + 1 : 1;
+                document.getElementById('txtItem').value = nextItem;
+            }
+
+            items.forEach(o => {
+                const div = document.createElement('div');
+                div.className = `obs-item ${o.estado.toLowerCase()}`;
+                div.innerHTML = `
+                    <div class="obs-header">
+                        <span>Ítem #${o.item} - ${o.responsable}</span>
+                        <span class="badge ${o.estado.toLowerCase()}">${o.estado}</span>
+                    </div>
+                    <div style="font-size: 13px;">${o.descripcion}</div>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px;">
+                        <button onclick="editarObs(${o.id})" style="border:none; background:#E2E8F0; padding:4px 8px; border-radius:4px;">✏️ Editar / Levantar</button>
+                        <button onclick="eliminarObs(${o.id})" style="border:none; background:#FED7D7; padding:4px 8px; border-radius:4px; color:#C53030;">🗑️</button>
+                    </div>
+                `;
+                cont.appendChild(div);
+            });
+        }
+
+        window.editarObs = async (id) => {
+            const o = await db.observaciones.get(id);
+            if (!o) return;
+            editId = id;
+            document.getElementById('txtItem').value = o.item;
+            document.getElementById('selResp').value = o.responsable;
+            document.getElementById('selEstado').value = o.estado;
+            document.getElementById('txtHallazgo').value = o.descripcion;
+            document.getElementById('txtAccion').value = o.accion || "";
+            document.getElementById('txtFecH').value = o.fechaH;
+            document.getElementById('txtFecL').value = o.fechaL || "";
+            
+            if (o.fotoH) {
+                document.getElementById('prevHallazgo').src = o.fotoH;
+                document.getElementById('prevHallazgo').style.display = "block";
+                fotoHallazgoBase64 = o.fotoH;
+            }
+            if (o.fotoL) {
+                document.getElementById('prevLevantada').src = o.fotoL;
+                document.getElementById('prevLevantada').style.display = "block";
+                fotoLevantadaBase64 = o.fotoL;
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.eliminarObs = async (id) => {
+            if (confirm("¿Desea eliminar esta observación?")) {
+                await db.observaciones.delete(id);
+                cargarLista();
+            }
+        };
+
+        function limpiarFormulario() {
+            document.getElementById('txtHallazgo').value = "";
+            document.getElementById('txtAccion').value = "";
+            document.getElementById('prevHallazgo').style.display = "none";
+            document.getElementById('prevLevantada').style.display = "none";
+            document.getElementById('selEstado').value = "PENDIENTE";
+            fotoHallazgoBase64 = "";
+            fotoLevantadaBase64 = "";
+            editId = null;
+        }
+
+        // Generar PDF FOSSO en Orientación Horizontal desde el Celular
+        document.getElementById('btnGenerarPdf').onclick = async () => {
+            const data = await db.observaciones.orderBy('item').toArray();
+            if (!data.length) {
+                alert("No hay registros para emitir el reporte.");
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
+
+            // Encabezado FOSSO
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(13);
+            doc.setTextColor(31, 78, 121);
+            doc.text("FOSSO - Food Services Solution", 25, 25);
+            doc.text("REPORTE DE OBSERVACIONES LEVANTADAS Y PLAN DE ACCIÓN", 300, 25);
+
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(80, 80, 80);
+            doc.text("SEGUIMIENTO DE OBSERVACIONES Y EVIDENCIA DE LEVANTAMIENTO", 300, 38);
+
+            const rows = data.map(o => [
+                o.item,
+                "", // Espacio para foto hallazgo
+                o.descripcion,
+                "", // Espacio para foto levantada
+                o.accion || "-",
+                o.responsable,
+                o.fechaH,
+                o.fechaL || "-",
+                o.estado
+            ]);
+
+            doc.autoTable({
+                head: [["ITEM", "FOTO HALLAZGO", "DESCRIPCIÓN HALLAZGO", "FOTO LEVANTADA", "ACCIÓN CORRECTIVA", "RESPONSABLE", "FECHA HALLAZGO", "FECHA LEVANT.", "ESTADO"]],
+                body: rows,
+                startY: 50,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 3, valign: 'middle', halign: 'center' },
+                headStyles: { fillColor: [31, 78, 121], textColor: [255, 255, 255] },
+                columnStyles: {
+                    0: { cellWidth: 26 },
+                    1: { cellWidth: 75, minCellHeight: 60 },
+                    2: { cellWidth: 140, halign: 'left' },
+                    3: { cellWidth: 75, minCellHeight: 60 },
+                    4: { cellWidth: 140, halign: 'left' },
+                    5: { cellWidth: 70 },
+                    6: { cellWidth: 60 },
+                    7: { cellWidth: 60 },
+                    8: { cellWidth: 60 }
+                },
+                didDrawCell: function(dataCell) {
+                    // Incrustar fotos base64 dentro de la tabla del PDF
+                    if (dataCell.section === 'body') {
+                        const reg = data[dataCell.row.index];
+                        if (dataCell.column.index === 1 && reg.fotoH) {
+                            try {
+                                doc.addImage(reg.fotoH, 'JPEG', dataCell.cell.x + 2, dataCell.cell.y + 2, 71, 56);
+                            } catch (e) {}
+                        }
+                        if (dataCell.column.index === 3 && reg.fotoL) {
+                            try {
+                                doc.addImage(reg.fotoL, 'JPEG', dataCell.cell.x + 2, dataCell.cell.y + 2, 71, 56);
+                            } catch (e) {}
+                        }
+                    }
+                },
+                didDrawPage: function(pageData) {
+                    // Firma de desarrollo en el pie de cada página del PDF
+                    doc.setFontSize(8);
+                    doc.setTextColor(120, 120, 120);
+                    doc.text("Desarrollado por: Antonio Guanilo Gonzales", 25, 590);
+                }
+            });
+
+            doc.save(`Reporte_5S_FOSSO_${new Date().toISOString().slice(0,10)}.pdf`);
+        };
+
+        cargarLista();
+    </script>
+</body>
+</html>
