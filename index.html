@@ -43,7 +43,7 @@
 
         .btn-camera {
             background: #4A5568; color: white; border: none; border-radius: 6px;
-            padding: 10px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 6px;
+            padding: 11px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 6px;
             display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer;
         }
         .btn-camera.levantada { background: #27AE60; }
@@ -119,16 +119,18 @@
             <label style="color: #C0392B;">1. Hallazgo / Observación</label>
             <textarea id="txtHallazgo" rows="2" placeholder="Describa la observación en comedor, cocina, etc..."></textarea>
             
-            <input type="file" id="fileHallazgo" accept="image/*" capture="environment" style="display: none;">
-            <button class="btn-camera" onclick="document.getElementById('fileHallazgo').click()">📷 Tomar Foto del Hallazgo (Antes)</button>
+            <!-- Input modificado: Permite Cámara O Galería -->
+            <input type="file" id="fileHallazgo" accept="image/*" style="display: none;">
+            <button class="btn-camera" onclick="document.getElementById('fileHallazgo').click()">📷 Tomar o Elegir Foto del Hallazgo (Antes)</button>
             <img id="prevHallazgo" class="preview-img">
 
             <!-- Sección Levantamiento -->
             <label style="color: #27AE60; margin-top: 14px;">2. Acción Correctiva / Levantamiento</label>
             <textarea id="txtAccion" rows="2" placeholder="Acción realizada para subsanar..."></textarea>
 
-            <input type="file" id="fileLevantada" accept="image/*" capture="environment" style="display: none;">
-            <button class="btn-camera levantada" onclick="document.getElementById('fileLevantada').click()">📷 Tomar Foto Levantada (Después)</button>
+            <!-- Input modificado: Permite Cámara O Galería -->
+            <input type="file" id="fileLevantada" accept="image/*" style="display: none;">
+            <button class="btn-camera levantada" onclick="document.getElementById('fileLevantada').click()">📷 Tomar o Elegir Foto Levantada (Después)</button>
             <img id="prevLevantada" class="preview-img">
 
             <div class="row">
@@ -151,7 +153,6 @@
             <div id="listaObservaciones"></div>
         </div>
 
-        <!-- Firma de Desarrollador Requerida -->
         <div class="footer">
             Desarrollado por: Antonio Guanilo Gonzales
         </div>
@@ -159,7 +160,6 @@
     </div>
 
     <script>
-        // Inicializar Base de Datos en el Celular (IndexedDB)
         const db = new Dexie("Calidad5S_DB");
         db.version(1).stores({
             observaciones: "++id, item, descripcion, responsable, estado, fechaH, fechaL"
@@ -169,10 +169,9 @@
         let fotoLevantadaBase64 = "";
         let editId = null;
 
-        // Establecer fecha de hoy por defecto
         document.getElementById('txtFecH').value = new Date().toISOString().split('T')[0];
 
-        // Manejo de Fotos desde la cámara móvil
+        // Manejo y compresión de fotos (desde cámara o galería)
         function comprimirYConvertir(input, previewId, callback) {
             input.onchange = e => {
                 const file = e.target.files[0];
@@ -184,12 +183,12 @@
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        const maxW = 800; // Optimizado para velocidad en celulares
+                        const maxW = 900;
                         const scale = maxW / img.width;
                         canvas.width = (img.width > maxW) ? maxW : img.width;
                         canvas.height = (img.width > maxW) ? (img.height * scale) : img.height;
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        const b64 = canvas.toDataURL('image/jpeg', 0.7);
+                        const b64 = canvas.toDataURL('image/jpeg', 0.72);
                         document.getElementById(previewId).src = b64;
                         document.getElementById(previewId).style.display = "block";
                         callback(b64);
@@ -202,7 +201,6 @@
         comprimirYConvertir(document.getElementById('fileHallazgo'), 'prevHallazgo', b64 => fotoHallazgoBase64 = b64);
         comprimirYConvertir(document.getElementById('fileLevantada'), 'prevLevantada', b64 => fotoLevantadaBase64 = b64);
 
-        // Guardar o Actualizar
         document.getElementById('btnGuardar').onclick = async () => {
             const hallazgo = document.getElementById('txtHallazgo').value.trim();
             if (!hallazgo) {
@@ -238,7 +236,6 @@
             const cont = document.getElementById('listaObservaciones');
             cont.innerHTML = "";
 
-            // Sugerir siguiente item
             if (!editId) {
                 const nextItem = items.length ? Math.max(...items.map(o => o.item)) + 1 : 1;
                 document.getElementById('txtItem').value = nextItem;
@@ -305,7 +302,6 @@
             editId = null;
         }
 
-        // Generar PDF FOSSO en Orientación Horizontal desde el Celular
         document.getElementById('btnGenerarPdf').onclick = async () => {
             const data = await db.observaciones.orderBy('item').toArray();
             if (!data.length) {
@@ -316,7 +312,6 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
 
-            // Encabezado FOSSO
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.setTextColor(31, 78, 121);
@@ -330,9 +325,9 @@
 
             const rows = data.map(o => [
                 o.item,
-                "", // Espacio para foto hallazgo
+                "",
                 o.descripcion,
-                "", // Espacio para foto levantada
+                "",
                 o.accion || "-",
                 o.responsable,
                 o.fechaH,
@@ -359,7 +354,6 @@
                     8: { cellWidth: 60 }
                 },
                 didDrawCell: function(dataCell) {
-                    // Incrustar fotos base64 dentro de la tabla del PDF
                     if (dataCell.section === 'body') {
                         const reg = data[dataCell.row.index];
                         if (dataCell.column.index === 1 && reg.fotoH) {
@@ -375,7 +369,6 @@
                     }
                 },
                 didDrawPage: function(pageData) {
-                    // Firma de desarrollo en el pie de cada página del PDF
                     doc.setFontSize(8);
                     doc.setTextColor(120, 120, 120);
                     doc.text("Desarrollado por: Antonio Guanilo Gonzales", 25, 590);
