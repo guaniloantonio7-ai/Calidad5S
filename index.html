@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gestión Calidad 5S - FOSSO</title>
     <meta name="theme-color" content="#1F4E79">
-    <!-- Librerías offline para Base de Datos y Generación de PDF -->
+    <!-- Librerías para Base de Datos local y PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -31,7 +31,7 @@
         }
         .card h2 { font-size: 14px; margin-top: 0; margin-bottom: 10px; color: #1F4E79; border-bottom: 1px solid #E2E8F0; padding-bottom: 5px; }
 
-        label { font-size: 12px; font-weight: 600; display: block; margin-top: 8px; color: #4A5568; }
+        label.campo { font-size: 12px; font-weight: 600; display: block; margin-top: 8px; color: #4A5568; }
         input, select, textarea {
             width: 100%; padding: 10px; font-size: 14px; border: 1px solid #CBD5E0;
             border-radius: 6px; margin-top: 4px; outline: none; background: #FAFAFA;
@@ -41,12 +41,15 @@
         .row { display: flex; gap: 10px; }
         .col { flex: 1; }
 
-        .btn-camera {
-            background: #4A5568; color: white; border: none; border-radius: 6px;
-            padding: 11px; font-size: 13px; font-weight: 600; width: 100%; margin-top: 6px;
-            display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer;
+        /* Botón tipo label para abrir la galería nativa de iOS y Android sin bloqueos */
+        .btn-adjuntar {
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            background: #4A5568; color: white; border-radius: 6px;
+            padding: 12px; font-size: 13px; font-weight: 600; text-align: center;
+            margin-top: 6px; cursor: pointer; user-select: none;
         }
-        .btn-camera.levantada { background: #27AE60; }
+        .btn-adjuntar.levantada { background: #27AE60; }
+
         .preview-img {
             width: 100%; height: 140px; object-fit: cover; border-radius: 6px;
             margin-top: 6px; display: none; border: 1px solid #CBD5E0;
@@ -59,7 +62,6 @@
         .btn-save { background: #1F4E79; color: white; }
         .btn-pdf { background: #C0392B; color: white; margin-bottom: 12px; }
 
-        /* Lista de Observaciones */
         .obs-item {
             border-left: 4px solid #C0392B; background: white; padding: 10px;
             border-radius: 4px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -88,17 +90,16 @@
 
     <div class="container">
 
-        <!-- Formulario de Registro Rápido -->
         <div class="card">
             <h2>Registro de Observación en Campo</h2>
             
             <div class="row">
                 <div class="col" style="flex: 0.5;">
-                    <label>Ítem</label>
+                    <label class="campo">Ítem</label>
                     <input type="number" id="txtItem" value="1">
                 </div>
                 <div class="col">
-                    <label>Responsable</label>
+                    <label class="campo">Responsable</label>
                     <select id="selResp">
                         <option value="FOSSO">FOSSO</option>
                         <option value="AGROLMOS">AGROLMOS</option>
@@ -107,7 +108,7 @@
                     </select>
                 </div>
                 <div class="col">
-                    <label>Estado</label>
+                    <label class="campo">Estado</label>
                     <select id="selEstado">
                         <option value="PENDIENTE">PENDIENTE</option>
                         <option value="LEVANTADA">LEVANTADA</option>
@@ -115,31 +116,31 @@
                 </div>
             </div>
 
-            <!-- Sección Hallazgo -->
-            <label style="color: #C0392B;">1. Hallazgo / Observación</label>
+            <!-- Hallazgo -->
+            <label class="campo" style="color: #C0392B;">1. Hallazgo / Observación</label>
             <textarea id="txtHallazgo" rows="2" placeholder="Describa la observación en comedor, cocina, etc..."></textarea>
             
-            <!-- Input modificado: Permite Cámara O Galería -->
-            <input type="file" id="fileHallazgo" accept="image/*" style="display: none;">
-            <button class="btn-camera" onclick="document.getElementById('fileHallazgo').click()">📷 Tomar o Elegir Foto del Hallazgo (Antes)</button>
+            <!-- Input conectado mediante ID a la etiqueta label -->
+            <input type="file" id="fileHallazgo" accept="image/jpeg, image/png, image/jpg, image/webp" style="position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+            <label for="fileHallazgo" class="btn-adjuntar">📁 Elegir de Fototeca o Tomar Foto (Antes)</label>
             <img id="prevHallazgo" class="preview-img">
 
-            <!-- Sección Levantamiento -->
-            <label style="color: #27AE60; margin-top: 14px;">2. Acción Correctiva / Levantamiento</label>
+            <!-- Levantamiento -->
+            <label class="campo" style="color: #27AE60; margin-top: 14px;">2. Acción Correctiva / Levantamiento</label>
             <textarea id="txtAccion" rows="2" placeholder="Acción realizada para subsanar..."></textarea>
 
-            <!-- Input modificado: Permite Cámara O Galería -->
-            <input type="file" id="fileLevantada" accept="image/*" style="display: none;">
-            <button class="btn-camera levantada" onclick="document.getElementById('fileLevantada').click()">📷 Tomar o Elegir Foto Levantada (Después)</button>
+            <!-- Input conectado mediante ID a la etiqueta label -->
+            <input type="file" id="fileLevantada" accept="image/jpeg, image/png, image/jpg, image/webp" style="position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none;">
+            <label for="fileLevantada" class="btn-adjuntar levantada">📁 Elegir de Fototeca o Tomar Foto (Después)</label>
             <img id="prevLevantada" class="preview-img">
 
             <div class="row">
                 <div class="col">
-                    <label>Fecha Hallazgo</label>
+                    <label class="campo">Fecha Hallazgo</label>
                     <input type="date" id="txtFecH">
                 </div>
                 <div class="col">
-                    <label>Fecha Levantamiento</label>
+                    <label class="campo">Fecha Levantamiento</label>
                     <input type="date" id="txtFecL">
                 </div>
             </div>
@@ -147,7 +148,6 @@
             <button class="btn-action btn-save" id="btnGuardar">💾 Guardar Observación</button>
         </div>
 
-        <!-- Listado de Inspecciones -->
         <div class="card">
             <h2>Historial de Hallazgos</h2>
             <div id="listaObservaciones"></div>
@@ -171,9 +171,8 @@
 
         document.getElementById('txtFecH').value = new Date().toISOString().split('T')[0];
 
-        // Manejo y compresión de fotos (desde cámara o galería)
-        function comprimirYConvertir(input, previewId, callback) {
-            input.onchange = e => {
+        function procesarImagen(input, previewId, callback) {
+            input.addEventListener('change', e => {
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
@@ -195,11 +194,11 @@
                     };
                 };
                 reader.readAsDataURL(file);
-            };
+            });
         }
 
-        comprimirYConvertir(document.getElementById('fileHallazgo'), 'prevHallazgo', b64 => fotoHallazgoBase64 = b64);
-        comprimirYConvertir(document.getElementById('fileLevantada'), 'prevLevantada', b64 => fotoLevantadaBase64 = b64);
+        procesarImagen(document.getElementById('fileHallazgo'), 'prevHallazgo', b64 => fotoHallazgoBase64 = b64);
+        procesarImagen(document.getElementById('fileLevantada'), 'prevLevantada', b64 => fotoLevantadaBase64 = b64);
 
         document.getElementById('btnGuardar').onclick = async () => {
             const hallazgo = document.getElementById('txtHallazgo').value.trim();
@@ -297,6 +296,8 @@
             document.getElementById('prevHallazgo').style.display = "none";
             document.getElementById('prevLevantada').style.display = "none";
             document.getElementById('selEstado').value = "PENDIENTE";
+            document.getElementById('fileHallazgo').value = "";
+            document.getElementById('fileLevantada').value = "";
             fotoHallazgoBase64 = "";
             fotoLevantadaBase64 = "";
             editId = null;
